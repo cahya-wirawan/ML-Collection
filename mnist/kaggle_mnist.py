@@ -19,23 +19,6 @@ TRAIN_SIZE = 38000
 VALID_SIZE = 2000
 TEST_SIZE = 2000
 
-# neural network with 1 layer of 10 softmax neurons
-#
-# · · · · · · · · · ·       (input data, flattened pixels)       X [batch, 784]        # 784 = 28 * 28
-# \x/x\x/x\x/x\x/x\x/    -- fully connected layer (softmax)      W [784, 10]     b[10]
-#   · · · · · · · ·                                              Y [batch, 10]
-
-# The model is:
-#
-# Y = softmax( X * W + b)
-#              X: matrix for 100 grayscale images of 28x28 pixels, flattened (there are 100 images in a mini-batch)
-#              W: weight matrix with 784 lines and 10 columns
-#              b: bias vector with 10 dimensions
-#              +: add with broadcasting: adds the vector to each line of the matrix (numpy)
-#              softmax(matrix) applies softmax on each line
-#              softmax(line) applies an exp to each value then divides by the norm of the resulting line
-#              Y: output matrix with 100 lines and 10 columns
-
 
 def custom_kaggle_mnist():
     """
