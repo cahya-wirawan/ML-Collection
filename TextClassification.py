@@ -7,6 +7,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import SGDClassifier
 from sklearn import metrics
+from sklearn.externals import joblib
 
 import numpy as np
 
@@ -38,6 +39,7 @@ bayes_clf = Pipeline([('vect', CountVectorizer()),
                       ('clf', MultinomialNB())
                       ])
 bayes_clf.fit(twenty_train.data, twenty_train.target)
+joblib.dump(bayes_clf, "bayes_20newsgroup.pkl", compress=9)
 """ Predict the test dataset using Naive Bayes"""
 predicted = bayes_clf.predict(docs_test)
 print('Naive Bayes correct prediction: {:4.2f}'.format(np.mean(predicted == twenty_test.target)))
@@ -49,6 +51,7 @@ svm_clf = Pipeline([('vect', CountVectorizer()),
     ('clf', SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, n_iter=   5, random_state=42)),
 ])
 svm_clf.fit(twenty_train.data, twenty_train.target)
+joblib.dump(svm_clf, "svm_20newsgroup.pkl", compress=9)
 """ Predict the test dataset using Naive Bayes"""
 predicted = svm_clf.predict(docs_test)
 print('SVM correct prediction: {:4.2f}'.format(np.mean(predicted == twenty_test.target)))
