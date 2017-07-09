@@ -5,45 +5,48 @@ import pandas as pd
 import numpy as np
 import math
 from tensorflow.contrib.learn.python.learn.datasets import base
-from tensorflow.contrib.learn.python.learn.datasets.mnist import DataSet
 import tensorflow as tf
 import kaggle_mnist as km
 
 mnist = km.custom_kaggle_mnist()
 
-
-# five layers and their number of neurons (tha last layer has 10 softmax neurons)
-L = 200
-M = 100
-N = 60
-O = 30
-
-
-lr = tf.placeholder(tf.float32)
 # input X: 28x28 grayscale images, the first dimension (None) will index the images in the mini-batch
 X = tf.placeholder(tf.float32, [None, 28, 28, 1])
 # correct answers will go here
 Y_ = tf.placeholder(tf.float32, [None, 10])
+lr = tf.placeholder(tf.float32)
 
-# Weights initialised with small random values between -0.2 and +0.2
-# When using RELUs, make sure biases are initialised with small *positive* values for example 0.1 = tf.ones([K])/10
-W1 = tf.Variable(tf.truncated_normal([784, L], stddev=0.1))  # 784 = 28 * 28
-B1 = tf.Variable(tf.ones([L])/10)
-W2 = tf.Variable(tf.truncated_normal([L, M], stddev=0.1))
-B2 = tf.Variable(tf.ones([M])/10)
-W3 = tf.Variable(tf.truncated_normal([M, N], stddev=0.1))
-B3 = tf.Variable(tf.ones([N])/10)
-W4 = tf.Variable(tf.truncated_normal([N, O], stddev=0.1))
-B4 = tf.Variable(tf.ones([O])/10)
-W5 = tf.Variable(tf.truncated_normal([O, 10], stddev=0.1))
-B5 = tf.Variable(tf.zeros([10]))
+# three convolutional layers with their channel counts, and a
+# fully connected layer (tha last layer has 10 softmax neurons)
+K = 4  # first convolutional layer output depth
+L = 8  # second convolutional layer output depth
+M = 12  # third convolutional layer
+N = 200  # fully connected layer
+
+W1 = tf.Variable(tf.truncated_normal([5, 5, 1, K], stddev=0.1))  # 5x5 patch, 1 input channel, K output channels
+B1 = tf.Variable(tf.ones([K])/10)
+W2 = tf.Variable(tf.truncated_normal([5, 5, K, L], stddev=0.1))
+B2 = tf.Variable(tf.ones([L])/10)
+W3 = tf.Variable(tf.truncated_normal([4, 4, L, M], stddev=0.1))
+B3 = tf.Variable(tf.ones([M])/10)
+
+W4 = tf.Variable(tf.truncated_normal([7 * 7 * M, N], stddev=0.1))
+B4 = tf.Variable(tf.ones([N])/10)
+W5 = tf.Variable(tf.truncated_normal([N, 10], stddev=0.1))
+B5 = tf.Variable(tf.ones([10])/10)
 
 # The model
-XX = tf.reshape(X, [-1, 784])
-Y1 = tf.nn.relu(tf.matmul(XX, W1) + B1)
-Y2 = tf.nn.relu(tf.matmul(Y1, W2) + B2)
-Y3 = tf.nn.relu(tf.matmul(Y2, W3) + B3)
-Y4 = tf.nn.relu(tf.matmul(Y3, W4) + B4)
+stride = 1  # output is 28x28
+Y1 = tf.nn.relu(tf.nn.conv2d(X, W1, strides=[1, stride, stride, 1], padding='SAME') + B1)
+stride = 2  # output is 14x14
+Y2 = tf.nn.relu(tf.nn.conv2d(Y1, W2, strides=[1, stride, stride, 1], padding='SAME') + B2)
+stride = 2  # output is 7x7
+Y3 = tf.nn.relu(tf.nn.conv2d(Y2, W3, strides=[1, stride, stride, 1], padding='SAME') + B3)
+
+# reshape the output from the third convolution for the fully connected layer
+YY = tf.reshape(Y3, shape=[-1, 7 * 7 * M])
+
+Y4 = tf.nn.relu(tf.matmul(YY, W4) + B4)
 Ylogits = tf.matmul(Y4, W5) + B5
 Y = tf.nn.softmax(Ylogits)
 
@@ -62,7 +65,7 @@ correct_prediction = tf.equal(tf.argmax(Y, 1), tf.argmax(Y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 # training, learning rate = 0.005
-train_step = tf.train.GradientDescentOptimizer(lr).minimize(cross_entropy)
+train_step = tf.train.GradientDescentOptimizer(0.005).minimize(cross_entropy)
 
 
 sess = tf.InteractiveSession()
@@ -102,7 +105,8 @@ kaggle_test_images = np.reshape(kaggle_test_images, (kaggle_test_images.shape[0]
 # convert from [0:255] => [0.0:1.0]
 kaggle_test_images = np.multiply(kaggle_test_images, 1.0 / 255.0)
 
-predictions_kaggle = sess.run(tf.argmax(tf.nn.softmax(Y), 1), feed_dict={X: kaggle_test_images})
+predictions_kaggle = sess.run(tf.argmax(tf.nn.softmax(Y), 1),
+                              feed_dict={X: kaggle_test_images})
 
 with open(km.SUBMISSION_FILE, 'w') as submission:
     submission.write('ImageId,Label\n')
