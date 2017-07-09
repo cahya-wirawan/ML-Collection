@@ -19,7 +19,6 @@ TRAIN_SIZE = 38000
 VALID_SIZE = 2000
 TEST_SIZE = 2000
 
-
 def custom_kaggle_mnist():
     """
     downloads and parses mnist train dataset for kaggle digit recognizer
