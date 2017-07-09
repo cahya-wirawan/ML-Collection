@@ -15,25 +15,27 @@ X = tf.placeholder(tf.float32, [None, 28, 28, 1])
 # correct answers will go here
 Y_ = tf.placeholder(tf.float32, [None, 10])
 lr = tf.placeholder(tf.float32)
+# Probability of keeping a node during dropout = 1.0 at test time (no dropout) and 0.75 at training time
+pkeep = tf.placeholder(tf.float32)
 
 # three convolutional layers with their channel counts, and a
-# fully connected layer (tha last layer has 10 softmax neurons)
-K = 4  # first convolutional layer output depth
-L = 8  # second convolutional layer output depth
-M = 12  # third convolutional layer
+# fully connected layer (the last layer has 10 softmax neurons)
+K = 6  # first convolutional layer output depth
+L = 12  # second convolutional layer output depth
+M = 24  # third convolutional layer
 N = 200  # fully connected layer
 
-W1 = tf.Variable(tf.truncated_normal([5, 5, 1, K], stddev=0.1))  # 5x5 patch, 1 input channel, K output channels
-B1 = tf.Variable(tf.ones([K])/10)
+W1 = tf.Variable(tf.truncated_normal([6, 6, 1, K], stddev=0.1))  # 6x6 patch, 1 input channel, K output channels
+B1 = tf.Variable(tf.constant(0.1, tf.float32, [K]))
 W2 = tf.Variable(tf.truncated_normal([5, 5, K, L], stddev=0.1))
-B2 = tf.Variable(tf.ones([L])/10)
+B2 = tf.Variable(tf.constant(0.1, tf.float32, [L]))
 W3 = tf.Variable(tf.truncated_normal([4, 4, L, M], stddev=0.1))
-B3 = tf.Variable(tf.ones([M])/10)
+B3 = tf.Variable(tf.constant(0.1, tf.float32, [M]))
 
 W4 = tf.Variable(tf.truncated_normal([7 * 7 * M, N], stddev=0.1))
-B4 = tf.Variable(tf.ones([N])/10)
+B4 = tf.Variable(tf.constant(0.1, tf.float32, [N]))
 W5 = tf.Variable(tf.truncated_normal([N, 10], stddev=0.1))
-B5 = tf.Variable(tf.ones([10])/10)
+B5 = tf.Variable(tf.constant(0.1, tf.float32, [10]))
 
 # The model
 stride = 1  # output is 28x28
@@ -47,7 +49,8 @@ Y3 = tf.nn.relu(tf.nn.conv2d(Y2, W3, strides=[1, stride, stride, 1], padding='SA
 YY = tf.reshape(Y3, shape=[-1, 7 * 7 * M])
 
 Y4 = tf.nn.relu(tf.matmul(YY, W4) + B4)
-Ylogits = tf.matmul(Y4, W5) + B5
+YY4 = tf.nn.dropout(Y4, pkeep)
+Ylogits = tf.matmul(YY4, W5) + B5
 Y = tf.nn.softmax(Ylogits)
 
 # cross-entropy
@@ -72,7 +75,6 @@ sess = tf.InteractiveSession()
 
 tf.global_variables_initializer().run()
 
-# Train (10, 100, 1000)
 BATCH_SIZE = 100
 EPOCH_NUMBER = 30
 RANGE_SIZE = int(EPOCH_NUMBER * km.TRAIN_SIZE/BATCH_SIZE)
@@ -85,16 +87,16 @@ for index in range(RANGE_SIZE):
 
     batch_xs, batch_ys = mnist.train.next_batch(BATCH_SIZE)
     _accuracy, _train_step = sess.run([accuracy, train_step],
-                                      feed_dict={X: batch_xs, Y_: batch_ys, lr: learning_rate})
+                                      feed_dict={X: batch_xs, Y_: batch_ys, lr: learning_rate, pkeep: 0.75})
 
     if index%(km.TRAIN_SIZE/BATCH_SIZE) == 0:
         print("Epoch {}, training accuracy: {}".format(int(1+index/(km.TRAIN_SIZE/BATCH_SIZE)), _accuracy))
 
 print("Validation accuracy: {}".format(sess.run(accuracy, feed_dict={X: mnist.validation.images,
-                                    Y_: mnist.validation.labels})))
+                                    Y_: mnist.validation.labels, pkeep: 1.0})))
 # Test trained model before submission
 print("Test accuracy: {}".format(sess.run(accuracy, feed_dict={X: mnist.test.images,
-                                    Y_: mnist.test.labels})))
+                                    Y_: mnist.test.labels, pkeep: 1.0})))
 
 # kaggle test data
 if km.DOWNLOAD_DATASETS:
@@ -106,7 +108,7 @@ kaggle_test_images = np.reshape(kaggle_test_images, (kaggle_test_images.shape[0]
 kaggle_test_images = np.multiply(kaggle_test_images, 1.0 / 255.0)
 
 predictions_kaggle = sess.run(tf.argmax(tf.nn.softmax(Y), 1),
-                              feed_dict={X: kaggle_test_images})
+                              feed_dict={X: kaggle_test_images, pkeep: 1.0})
 
 with open(km.SUBMISSION_FILE, 'w') as submission:
     submission.write('ImageId,Label\n')

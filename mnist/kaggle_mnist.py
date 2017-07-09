@@ -12,7 +12,7 @@ DOWNLOAD_DATASETS=True
 DATA_DIR = '../input/'
 KAGGLE_TRAIN_CSV = 'train.csv'
 KAGGLE_TEST_CSV = 'test.csv'
-SUBMISSION_FILE = 'submission_mnist_ann.csv'
+SUBMISSION_FILE = 'submission_mnist.csv'
 
 # should sum up to 42000, the total number of images in train.csv
 TRAIN_SIZE = 38000
