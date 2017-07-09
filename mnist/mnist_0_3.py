@@ -62,7 +62,8 @@ correct_prediction = tf.equal(tf.argmax(Y, 1), tf.argmax(Y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 # training, learning rate = 0.005
-train_step = tf.train.GradientDescentOptimizer(lr).minimize(cross_entropy)
+## train_step = tf.train.GradientDescentOptimizer(lr).minimize(cross_entropy)
+train_step = tf.train.AdamOptimizer(lr).minimize(cross_entropy)
 
 
 sess = tf.InteractiveSession()
