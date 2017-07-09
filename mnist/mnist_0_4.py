@@ -18,7 +18,7 @@ M = 100
 N = 60
 O = 30
 
-
+pkeep = tf.placeholder(tf.float32)
 lr = tf.placeholder(tf.float32)
 # input X: 28x28 grayscale images, the first dimension (None) will index the images in the mini-batch
 X = tf.placeholder(tf.float32, [None, 28, 28, 1])
@@ -41,10 +41,14 @@ B5 = tf.Variable(tf.zeros([10]))
 # The model
 XX = tf.reshape(X, [-1, 784])
 Y1 = tf.nn.relu(tf.matmul(XX, W1) + B1)
-Y2 = tf.nn.relu(tf.matmul(Y1, W2) + B2)
-Y3 = tf.nn.relu(tf.matmul(Y2, W3) + B3)
-Y4 = tf.nn.relu(tf.matmul(Y3, W4) + B4)
-Ylogits = tf.matmul(Y4, W5) + B5
+Y1d = tf.nn.dropout(Y1, pkeep)
+Y2 = tf.nn.relu(tf.matmul(Y1d, W2) + B2)
+Y2d = tf.nn.dropout(Y2, pkeep)
+Y3 = tf.nn.relu(tf.matmul(Y2d, W3) + B3)
+Y3d = tf.nn.dropout(Y3, pkeep)
+Y4 = tf.nn.relu(tf.matmul(Y3d, W4) + B4)
+Y4d = tf.nn.dropout(Y4, pkeep)
+Ylogits = tf.matmul(Y4d, W5) + B5
 Y = tf.nn.softmax(Ylogits)
 
 # cross-entropy
@@ -82,16 +86,16 @@ for index in range(RANGE_SIZE):
 
     batch_xs, batch_ys = mnist.train.next_batch(BATCH_SIZE)
     _accuracy, _train_step = sess.run([accuracy, train_step],
-                                      feed_dict={X: batch_xs, Y_: batch_ys, lr: learning_rate})
+                                      feed_dict={X: batch_xs, Y_: batch_ys, lr: learning_rate, pkeep: 0.85})
 
     if index%(km.TRAIN_SIZE/BATCH_SIZE) == 0:
         print("Epoch {}, training accuracy: {}".format(int(1+index/(km.TRAIN_SIZE/BATCH_SIZE)), _accuracy))
 
 print("Validation accuracy: {}".format(sess.run(accuracy, feed_dict={X: mnist.validation.images,
-                                    Y_: mnist.validation.labels})))
+                                    Y_: mnist.validation.labels, pkeep: 1.0})))
 # Test trained model before submission
 print("Test accuracy: {}".format(sess.run(accuracy, feed_dict={X: mnist.test.images,
-                                    Y_: mnist.test.labels})))
+                                    Y_: mnist.test.labels, pkeep: 1.0})))
 
 # kaggle test data
 if km.DOWNLOAD_DATASETS:
@@ -102,7 +106,8 @@ kaggle_test_images = np.reshape(kaggle_test_images, (kaggle_test_images.shape[0]
 # convert from [0:255] => [0.0:1.0]
 kaggle_test_images = np.multiply(kaggle_test_images, 1.0 / 255.0)
 
-predictions_kaggle = sess.run(tf.argmax(tf.nn.softmax(Y), 1), feed_dict={X: kaggle_test_images})
+predictions_kaggle = sess.run(tf.argmax(tf.nn.softmax(Y), 1),
+                              feed_dict={X: kaggle_test_images, pkeep: 1.0})
 
 with open(km.SUBMISSION_FILE, 'w') as submission:
     submission.write('ImageId,Label\n')

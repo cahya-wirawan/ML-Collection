@@ -86,7 +86,7 @@ for index in range(RANGE_SIZE):
 print("Validation accuracy: {}".format(sess.run(accuracy, feed_dict={X: mnist.validation.images,
                                     Y_: mnist.validation.labels})))
 # Test trained model before submission
-print("Validation accuracy: {}".format(sess.run(accuracy, feed_dict={X: mnist.test.images,
+print("Test accuracy: {}".format(sess.run(accuracy, feed_dict={X: mnist.test.images,
                                     Y_: mnist.test.labels})))
 
 # kaggle test data
