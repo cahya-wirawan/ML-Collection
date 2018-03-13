@@ -26,7 +26,7 @@ class KaggleJigsawLoader(object):
         self.ids = self.df["id"].values
 
         np.random.seed(self.random_state)
-        np.random.shuffle(self.ids)
+        # np.random.shuffle(self.ids)
         training_number = int(len(self.ids)*(1.0-validation_split))
         self.ids_train = self.ids[0:training_number]
         self.ids_validation = self.ids[training_number:]
@@ -123,7 +123,7 @@ class KaggleJigsawLoader(object):
 
 if __name__ == "__main__":
     data_dir = "~/.kaggle/competitions/jigsaw-toxic-comment-classification-challenge"
-    jigsaw_dataset = KaggleJigsawLoader(filename=data_dir + "/train.csv", batch_size=10)
+    jigsaw_dataset = KaggleJigsawLoader(filename=data_dir + "/train_tiny.csv", batch_size=10)
     ds = []
     x = jigsaw_dataset.generate
     counter = 0

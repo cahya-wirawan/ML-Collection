@@ -19,7 +19,7 @@ class KaggleJigsawWordEmbedding(object):
         self.vocab_size = len(self.token.word_index) + 1
         # load the whole embedding into memory
         embeddings_index = dict()
-        f = open(word_embedding_path)
+        f = open(word_embedding_path, encoding='utf-8')
         for line in f:
             values = line.split()
             word = values[0]
