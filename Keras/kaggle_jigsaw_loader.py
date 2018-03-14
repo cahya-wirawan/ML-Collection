@@ -37,7 +37,7 @@ class KaggleJigsawLoader(object):
         docs = self.df[KaggleJigsawLoader.x_indices].values
         return docs
 
-    def generate(self, type="train", with_ids=False):
+    def generate(self, type="train", with_y=True, with_ids=False):
         'Generates batches of samples'
         # Infinite loop
         while 1:
@@ -57,7 +57,7 @@ class KaggleJigsawLoader(object):
                 ids_temp = np.array(ids_temp)
 
                 # Generate data
-                X, Y  = self.__data_generation(ids_temp)
+                X, Y  = self.__data_generation(with_y, ids_temp)
                 #X = np.expand_dims(X, axis=1)
                 #y = np.expand_dims(Y, axis=1)
                 if with_ids:
@@ -74,18 +74,18 @@ class KaggleJigsawLoader(object):
 
         return indexes
 
-    def __data_generation(self, ids):
+    def __data_generation(self, with_y, ids):
         'Generates data of batch_size samples' # X : (n_samples, v_size, v_size, v_size, n_channels)
-        # Initialization
-        # X = np.empty((self.batch_size, self.dim_x), dtype=str)
-        # Y = np.empty((self.batch_size))
 
         # Generate data
-        X = self.df[(self.df['id'].isin(ids))][KaggleJigsawLoader.x_indices].values[:,0]
-        Y = self.df[(self.df['id'].isin(ids))][KaggleJigsawLoader.y_indices].values
+        x = self.df[(self.df['id'].isin(ids))][KaggleJigsawLoader.x_indices].values[:,0]
         if self.encoded_docs_function is not None:
-            X = self.encoded_docs_function(X, self.max_seq_length)
-        return X, Y
+            x = self.encoded_docs_function(x, self.max_seq_length)
+        if with_y:
+            y = self.df[(self.df['id'].isin(ids))][KaggleJigsawLoader.y_indices].values
+        else:
+            y = None
+        return x, y
 
     def get_len(self, type="train"):
         if type == "train":

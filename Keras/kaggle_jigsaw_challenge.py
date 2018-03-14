@@ -113,7 +113,7 @@ if __name__ == "__main__":
         steps_per_epoch = pd.get_len("train")//batch_size + 1
         with open(output_file_path, "w") as prediction_output:
             prediction_output.write("id,toxic,severe_toxic,obscene,threat,insult,identity_hate\n")
-            for (test_x, test_y, ids) in pd.generate("train", with_ids=True):
+            for (test_x, test_y, ids) in pd.generate("train", with_y=False, with_ids=True):
                 if test_y is not None:
                     score = loaded_model.evaluate(test_x, test_y, verbose=0)
                     print("%s: %.2f%%" % (loaded_model.metrics_names[1], score[1]*100))
