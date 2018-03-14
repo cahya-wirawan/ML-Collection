@@ -8,7 +8,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import KFold
 from sklearn.metrics import confusion_matrix
 from Keras.kaggle_utils import print_cm
-from Keras.kaggle_model import cnn_lstm
+from Keras.kaggle_model import cnn_lstm, gru
 from Keras.kaggle_jigsaw_word_embedding import KaggleJigsawWordEmbedding
 from Keras.kaggle_jigsaw_loader import KaggleJigsawLoader
 
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     else:
         output_file_path = args.output
 
-    model = cnn_lstm
+    model = gru
     max_seq_length = 200
     # load train dataset
     pd = KaggleJigsawLoader(filename=train_dataset, validation_split=validation_split,
