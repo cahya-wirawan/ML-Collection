@@ -37,7 +37,7 @@ class KaggleJigsawLoader(object):
         docs = self.df[KaggleJigsawLoader.x_indices].values
         return docs
 
-    def generate(self, type="train"):
+    def generate(self, type="train", with_ids=False):
         'Generates batches of samples'
         # Infinite loop
         while 1:
@@ -47,19 +47,23 @@ class KaggleJigsawLoader(object):
             else:
                 indexes = self.__get_exploration_order(self.ids_validation)
             # Generate batches
-            imax = max(int(len(indexes)/self.batch_size), 1)
+            imax = max(int(len(indexes)/self.batch_size), 1) + 1
             for i in range(imax):
                 # Find list of IDs
                 if type == "train":
                     ids_temp = [self.ids_train[k] for k in indexes[i*self.batch_size:(i+1)*self.batch_size]]
                 else:
                     ids_temp = [self.ids_validation[k] for k in indexes[i*self.batch_size:(i+1)*self.batch_size]]
+                ids_temp = np.array(ids_temp)
 
                 # Generate data
-                X, Y = self.__data_generation(ids_temp)
+                X, Y  = self.__data_generation(ids_temp)
                 #X = np.expand_dims(X, axis=1)
                 #y = np.expand_dims(Y, axis=1)
-                yield X, Y
+                if with_ids:
+                    yield X, Y, ids_temp
+                else:
+                    yield X, Y
 
     def __get_exploration_order(self, ids):
         'Generates order of exploration'
@@ -106,17 +110,22 @@ class KaggleJigsawLoader(object):
         :return:
         """
 
-        dataset_x = self.df[KaggleJigsawLoader.x_indices].values
-        dataset_y = self.df[KaggleJigsawLoader.y_indices].values
-
-        # randomize the order of the datasets
+        dataset_x = self.df[KaggleJigsawLoader.x_indices].values[:,0]
+        if self.encoded_docs_function is not None:
+            dataset_x = self.encoded_docs_function(dataset_x, self.max_seq_length)
+        try:
+            dataset_y = self.df[KaggleJigsawLoader.y_indices].values
+        except KeyError:
+            dataset_y = None
+            # randomize the order of the datasets
         np.random.seed(self.random_state)
-        np.random.shuffle(dataset_x)
-        np.random.seed(self.random_state)
-        np.random.shuffle(dataset_y)
+        #np.random.shuffle(dataset_x)
+        if dataset_y is not None:
+            np.random.seed(self.random_state)
+            #np.random.shuffle(dataset_y)
 
-        dataset_x = np.expand_dims(dataset_x, axis=1)
-        dataset_y = np.expand_dims(dataset_y, axis=1)
+        # dataset_x = np.expand_dims(dataset_x, axis=1)
+        # dataset_y = np.expand_dims(dataset_y, axis=1)
 
         return dataset_x, dataset_y
 

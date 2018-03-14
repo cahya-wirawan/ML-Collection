@@ -33,6 +33,8 @@ if __name__ == "__main__":
                         help="set the epochs number)")
     parser.add_argument("-d", "--dropout", type=float, default=0.1,
                         help="set the dropout)")
+    parser.add_argument("-o", "--output", default=None,
+                        help="set the path to the prediction output")
     parser.add_argument("-v", "--verbose", type=int, default=0,
                         help="set the verbosity)")
 
@@ -50,25 +52,29 @@ if __name__ == "__main__":
     batch_size = args.batch_size
     validation_split = 0.1
     if args.model is None:
-        model_file_path = "results/kaggle_jigsaw_d_{}.hdf5".format( dropout)
+        model_file_path = "results/kaggle_jigsaw_d_{}.hdf5".format(dropout)
     else:
         model_file_path = args.model
+    if args.output is None:
+        output_file_path = "results/kaggle_jigsaw_prediction.csv"
+    else:
+        output_file_path = args.output
 
     model = cnn_lstm
     max_seq_length = 200
+    # load train dataset
+    pd = KaggleJigsawLoader(filename=train_dataset, validation_split=validation_split,
+                            batch_size=batch_size, )
+    docs = pd.get_docs()[:,0]
+    word_embedding = KaggleJigsawWordEmbedding(docs=docs)
+    embedding_matrix = word_embedding.get_embedding_matrix()
+    vocab_size = word_embedding.get_vocabulary_size()
+    pd.set_encoded_function(word_embedding.get_encoded_docs, max_seq_length=max_seq_length)
 
     if args.action == "train":
-        # load train dataset
-        pd = KaggleJigsawLoader(filename=train_dataset, validation_split=validation_split,
-                                batch_size=batch_size, )
-        docs = pd.get_docs()[:,0]
         tensorboard = TensorBoard(log_dir='graph', histogram_freq=0, write_graph=True, write_images=True)
         checkpoint = ModelCheckpoint(model_file_path, monitor='acc', verbose=args.verbose,
-                                     save_best_only=True, mode='max')
-        word_embedding = KaggleJigsawWordEmbedding(docs=docs)
-        embedding_matrix = word_embedding.get_embedding_matrix()
-        vocab_size = word_embedding.get_vocabulary_size()
-        pd.set_encoded_function(word_embedding.get_encoded_docs, max_seq_length=max_seq_length)
+                                 save_best_only=True, mode='max')
         if args.cv:
             train_x, train_y = pd.get_dataset()
             kfold = KFold(n_splits=10, shuffle=True, random_state=seed)
@@ -83,9 +89,9 @@ if __name__ == "__main__":
             print(model.summary())
             # class_weight = {0:1, 1:1, 2:1, 3:1}
             history = model.fit_generator(generator = pd.generate("train"),
-                                steps_per_epoch = pd.get_len("train")//batch_size,
+                                steps_per_epoch = pd.get_len("train")//batch_size + 1,
                                 validation_data = pd.generate("validation"),
-                                validation_steps = pd.get_len("validation")//batch_size,
+                                validation_steps = pd.get_len("validation")//batch_size + 1,
                                 use_multiprocessing=True, class_weight=None,
                                 epochs=epochs, verbose=args.verbose, callbacks=[checkpoint, tensorboard])
             print("Max of acc: {}, val_acc: {}".
@@ -94,19 +100,30 @@ if __name__ == "__main__":
                   format(min(history.history["loss"]), min(history.history["val_loss"])))
     else:
         # load test dataset
-        pd = KaggleJigsawLoader(filename=test_dataset, batch_size=batch_size)
-        test_x, test_y = pd.get_dataset()
+        pd = KaggleJigsawLoader(filename=test_dataset, batch_size=batch_size, validation_split=0.0, shuffle=False)
+        pd.set_encoded_function(word_embedding.get_encoded_docs, max_seq_length=max_seq_length)
 
         # load model & weight
         loaded_model = load_model(model_file_path)
         print("Loaded model from disk")
-
         # evaluate loaded model on test data
-        loaded_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-        score = loaded_model.evaluate(test_x, test_y, verbose=0)
-        prediction = loaded_model.predict(test_x, verbose=0)
-        print("%s: %.2f%%" % (loaded_model.metrics_names[1], score[1]*100))
-        print("Confusion matrix:")
-        phases = ['regP', 'regS', 'tele', 'N']
-        cm = confusion_matrix(test_y.argmax(axis=1), prediction.argmax(axis=1))
-        print_cm(cm, labels=phases)
+        loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+        predictions = []
+        steps_per_epoch = pd.get_len("train")//batch_size + 1
+        with open(output_file_path, "w") as prediction_output:
+            prediction_output.write("id,toxic,severe_toxic,obscene,threat,insult,identity_hate\n")
+            for (test_x, test_y, ids) in pd.generate("train", with_ids=True):
+                if test_y is not None:
+                    score = loaded_model.evaluate(test_x, test_y, verbose=0)
+                    print("%s: %.2f%%" % (loaded_model.metrics_names[1], score[1]*100))
+                prediction = loaded_model.predict(test_x, verbose=0)
+                predictions.extend(prediction)
+                for i, id in enumerate(ids):
+                    prediction_output.write("{},{}\n".
+                                            format(id, ",".join(["{:.1f}".format(val) for val in prediction[i]])))
+
+                steps_per_epoch -= 1
+                if steps_per_epoch == 0:
+                    break
+            print("prediction: {}".format(len(predictions)))
