@@ -44,8 +44,9 @@ def gru(dropout=0.1, activation='relu',
     input = Input(shape=(max_seq_length,), name='input')
     block = Embedding(len(embedding_matrix), output_dim, weights=[embedding_matrix],
                       input_length=max_seq_length, trainable=False)(input)
-    gru_layer = CuDNNGRU(units=512)
+    gru_layer = CuDNNGRU(units=128)
     block = Bidirectional(gru_layer)(block)
+    block = Dropout(dropout)(block)
     block = Dense(12, activation=activation)(block)
     block = Dropout(dropout)(block)
     output = Dense(6, activation='sigmoid')(block)
